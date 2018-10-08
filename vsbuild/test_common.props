@@ -14,7 +14,7 @@
       <PreprocessorDefinitions>UNITTEST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(GTEST_PATH)\build$(PLATFORM_32)\googlemock\gtest</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(GTEST_PATH)\build$(PLATFORM_32)\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
