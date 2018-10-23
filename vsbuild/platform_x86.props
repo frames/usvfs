@@ -11,9 +11,9 @@
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup>
-    <ClCompile>
-      <PreprocessorDefinitions>BOOST_LIB_BUILDID=x86;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
+	<Link>
+      <AdditionalLibraryDirectories>$(BOOST_PATH)\lib32-msvc-14.1\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="PLATFORM_32">
