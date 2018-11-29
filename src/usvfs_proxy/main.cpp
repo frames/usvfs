@@ -144,6 +144,8 @@ int main(int argc, char **argv) {
         for (usvfs::shared::StringT exec : params.first->processBlacklist) {
           if (boost::algorithm::iends_with(std::wstring(szModName),
                   "\\" + std::string(exec.data(), exec.size()))) {
+            logger->info("not injecting {} as application is blacklisted",
+                usvfs::shared::string_cast<std::string>(std::wstring(szModName)));
             blacklisted = TRUE;
             break;
           }
@@ -168,6 +170,8 @@ int main(int argc, char **argv) {
       for (usvfs::shared::StringT exec : params.first->processBlacklist) {
         if (boost::algorithm::iends_with(executable,
                 "\\" + std::string(exec.data(), exec.size()))) {
+          logger->info("not injecting {} as application is blacklisted",
+              std::string(exec.data(), exec.size()));
           blacklisted = TRUE;
           break;
         }
