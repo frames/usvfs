@@ -140,6 +140,11 @@ DLLEXPORT BOOL WINAPI CreateVFSDump(LPSTR buffer, size_t *size);
 DLLEXPORT VOID WINAPI BlacklistExecutable(LPWSTR executableName);
 
 /**
+ * clears the executable blacklist
+ */
+DLLEXPORT VOID WINAPI ClearExecutableBlacklist();
+
+/**
  * print debugging info about the vfs. The format is currently not fixed and may
  * change between usvfs versions
  */

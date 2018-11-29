@@ -28,6 +28,8 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <winapi.h>
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <Psapi.h>
 
 
 namespace bi = boost::interprocess;
@@ -135,8 +137,22 @@ int main(int argc, char **argv) {
       if (tid != 0) {
         threadHandle = OpenThread(THREAD_ALL_ACCESS, FALSE, tid);
       }
-      usvfs::injectProcess(p.parent_path().wstring(), par, processHandle,
-                           threadHandle);
+
+      BOOL blacklisted = FALSE;
+      TCHAR szModName[MAX_PATH];
+      if (GetModuleFileNameEx(processHandle, NULL, szModName, sizeof(szModName) / sizeof(TCHAR))) {
+        for (usvfs::shared::StringT exec : params.first->processBlacklist) {
+          if (boost::algorithm::iends_with(std::wstring(szModName),
+                  "\\" + std::string(exec.data(), exec.size()))) {
+            blacklisted = TRUE;
+            break;
+          }
+        }
+      }
+      if (!blacklisted) {
+        usvfs::injectProcess(p.parent_path().wstring(), par, processHandle,
+          threadHandle);
+      }
     } else {
       winapi::process::Result process =
           winapi::ansi::createProcess(executable)
@@ -148,7 +164,17 @@ int main(int argc, char **argv) {
         return 1;
       }
 
-      usvfs::injectProcess(p.parent_path().wstring(), par, process.processInfo);
+      BOOL blacklisted = FALSE;
+      for (usvfs::shared::StringT exec : params.first->processBlacklist) {
+        if (boost::algorithm::iends_with(executable,
+                "\\" + std::string(exec.data(), exec.size()))) {
+          blacklisted = TRUE;
+          break;
+        }
+      }
+      if (!blacklisted) {
+        usvfs::injectProcess(p.parent_path().wstring(), par, process.processInfo);
+      }
 
       ResumeThread(process.processInfo.hThread);
     }

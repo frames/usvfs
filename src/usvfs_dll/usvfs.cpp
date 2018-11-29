@@ -716,6 +716,11 @@ VOID WINAPI BlacklistExecutable(LPWSTR executableName)
   context->blacklistExecutable(executableName);
 }
 
+VOID WINAPI ClearExecutableBlacklist()
+{
+  context->clearExecutableBlacklist();
+}
+
 
 VOID WINAPI PrintDebugInfo()
 {

@@ -26,7 +26,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <usvfsparameters.h>
 #include <shared_memory.h>
 #include "loghelpers.h"
-
+#include <boost/algorithm/string/predicate.hpp>
 
 namespace bi = boost::interprocess;
 using usvfs::shared::SharedMemoryT;
@@ -207,6 +207,22 @@ void HookContext::blacklistExecutable(const std::wstring &executableName)
       shared::string_cast<std::string>(executableName, shared::CodePage::UTF8)
           .c_str(),
       m_Parameters->processBlacklist.get_allocator()));
+}
+
+void HookContext::clearExecutableBlacklist()
+{
+  m_Parameters->processBlacklist.clear();
+}
+
+BOOL HookContext::executableBlacklisted(const std::wstring &executableName) const
+{
+  for (shared::StringT exec : m_Parameters->processBlacklist) {
+    if (boost::algorithm::iends_with(executableName,
+            "\\" + std::string(exec.data(), exec.size()))) {
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 void HookContext::unregisterCurrentProcess()
