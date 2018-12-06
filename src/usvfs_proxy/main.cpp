@@ -30,6 +30,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <Psapi.h>
+#include <WinUser.h>
 
 
 namespace bi = boost::interprocess;
@@ -70,6 +71,27 @@ T getParameter(std::vector<std::string> &arguments, const std::string &key, cons
   }
 }
 
+static void exceptionDialog(int line, int num, ...) {
+  va_list args;
+  va_start(args, num);
+
+  std::wstring wstr;
+  WCHAR buf[256];
+  wstr.append(L"Unhandled USVFS proxy exception (line ");
+  wsprintf(buf, L"%d): ", line);
+  wstr.append(buf);
+  for (int i = 0; i < num; i++ ) {
+    wsprintf(buf, L"%S", va_arg(args, const char *));
+    if (i < num-1)
+      wsprintf(buf, L", ");
+    wstr.append(buf);
+  }
+
+  MessageBox(NULL, wstr.data(), NULL, MB_OK);
+
+  va_end(args);
+}
+
 int main(int argc, char **argv) {
   std::shared_ptr<spdlog::logger> logger;
 
@@ -85,11 +107,13 @@ int main(int argc, char **argv) {
     instance = getParameter<std::string>(arguments, "instance", true);
   } catch (const std::exception &e) {
     if (logger.get() == nullptr) {
+      exceptionDialog(__LINE__, 1, e.what());
       return 1;
     }
     try {
       logger->critical("{}", e.what());
-    } catch (const spdlog::spdlog_ex &) {
+    } catch (const spdlog::spdlog_ex &e2) {
+      exceptionDialog(__LINE__, 2, e.what(), e2.what());
       // no way to log this
     } catch (const std::exception &) {
       logger->critical() << e.what();
@@ -188,8 +212,9 @@ int main(int argc, char **argv) {
     try {
       logger->critical("unhandled exception: {}", e.what());
       logExtInfo(e);
-    } catch (const spdlog::spdlog_ex &) {
+    } catch (const spdlog::spdlog_ex &e2) {
       // no way to log this
+      exceptionDialog(__LINE__, 2, e.what(), e2.what());
     } catch (const std::exception &) {
       logger->critical() << e.what();
     }
