@@ -276,8 +276,8 @@ public:
     }
     else
     {
-      if (m_PathCreated)
-        addDirectoryMapping(context, fs::path(m_RealPath).parent_path(), fs::path(m_FileName).parent_path());
+      //if (m_PathCreated)
+        //addDirectoryMapping(context, fs::path(m_RealPath).parent_path(), fs::path(m_FileName).parent_path());
 
       spdlog::get("hooks")->info("mapping file in vfs: {}, {}",
         ush::string_cast<std::string>(m_RealPath, ush::CodePage::UTF8),
@@ -291,6 +291,9 @@ public:
 
   void removeMapping(const usvfs::HookContext::ConstPtr &readContext, bool directory = false)
   {
+    bool addToDelete = false;
+    bool dontAddToDelete = false;
+
     // We need to track deleted files even if they were not rerouted (i.e. files deleted from the real folder which there is
     // a virtualized mapped folder on top of it). Since we don't want to add, *every* file which is deleted we check this:
     if (!directory) {
@@ -305,7 +308,7 @@ public:
           found = true;
       }
       if (found)
-        k32DeleteTracker.insert(m_RealPath, m_FileName);
+        addToDelete = true;
     }
 
     if (wasRerouted()) {
@@ -324,6 +327,7 @@ public:
           parent = fs::path(parent).parent_path().wstring();
           if (k32FakeDirTracker.contains(parent))
           {
+            dontAddToDelete = true;
             if (RemoveDirectoryW(parent.c_str())) {
               k32FakeDirTracker.erase(parent);
               spdlog::get("usvfs")->info("removed empty fake directory: {}", string_cast<std::string>(parent));
@@ -338,6 +342,9 @@ public:
             break;
         }
       }
+    }
+    if (addToDelete && !dontAddToDelete) {
+      k32DeleteTracker.insert(m_RealPath, m_FileName);
     }
   }
 
