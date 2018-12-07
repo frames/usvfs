@@ -25,6 +25,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <limits>
 #include <algorithm>
 #include <ShlObj.h>
@@ -209,4 +210,7 @@ void __cdecl boost::interprocess::ipcdetail::get_shared_dir(std::string &shared_
   } else {
     shared_dir = "C:\\ProgramData\\USVFS";
   }
+  boost::filesystem::path boostPath(shared_dir);
+  if (!boost::filesystem::exists(boostPath))
+    boost::filesystem::create_directories(boostPath);
 }
