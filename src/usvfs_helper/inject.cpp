@@ -154,8 +154,8 @@ void usvfs::injectProcess(const std::wstring &applicationPath
                                       + ush::string_cast<std::string>(exePath.wstring()))
                             << ex_win_errcode(result.errorCode));
     } else {
-      // wait for proxy completion. this shouldn't take long, 5 seconds is very generous
-      switch (WaitForSingleObject(result.processInfo.hProcess, 5000)) {
+      // wait for proxy completion. this shouldn't take long, 15 seconds is very generous
+      switch (WaitForSingleObject(result.processInfo.hProcess, 15000)) {
         case WAIT_TIMEOUT: {
             spdlog::get("usvfs")->debug("proxy timeout");
             TerminateProcess(result.processInfo.hProcess, 1);
