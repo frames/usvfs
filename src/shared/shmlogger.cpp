@@ -25,11 +25,16 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <limits>
 #include <algorithm>
+#include <ShlObj.h>
+#include <comutil.h>
 #pragma warning(pop)
 
 #pragma warning(disable : 4996)
+
+#pragma comment(lib, "comsuppw")
 
 using namespace boost::interprocess;
 
@@ -193,4 +198,19 @@ void spdlog::sinks::shm_sink::output(level::level_enum lev,
   if (!sent) {
     m_DroppedMessages.fetch_add(1, std::memory_order_relaxed);
   }
+}
+
+void __cdecl boost::interprocess::ipcdetail::get_shared_dir(std::string &shared_dir)
+{
+  PWSTR path;
+  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, NULL, &path))) {
+    _bstr_t bPath(path);
+    shared_dir = (char*)bPath;
+    shared_dir += "\\USVFS";
+  } else {
+    shared_dir = "C:\\ProgramData\\USVFS";
+  }
+  boost::filesystem::path boostPath(shared_dir);
+  if (!boost::filesystem::exists(boostPath))
+    boost::filesystem::create_directories(boostPath);
 }

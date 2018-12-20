@@ -199,6 +199,8 @@ public:
   std::vector<DWORD> registeredProcesses() const;
 
   void blacklistExecutable(const std::wstring &executableName);
+  void clearExecutableBlacklist();
+  BOOL executableBlacklisted(const std::wstring &executableName) const;
 
   void setLogLevel(LogLevel level);
   void setCrashDumpsType(CrashDumpsType type);

@@ -276,8 +276,8 @@ public:
     }
     else
     {
-      if (m_PathCreated)
-        addDirectoryMapping(context, fs::path(m_RealPath).parent_path(), fs::path(m_FileName).parent_path());
+      //if (m_PathCreated)
+        //addDirectoryMapping(context, fs::path(m_RealPath).parent_path(), fs::path(m_FileName).parent_path());
 
       spdlog::get("hooks")->info("mapping file in vfs: {}, {}",
         ush::string_cast<std::string>(m_RealPath, ush::CodePage::UTF8),
@@ -291,6 +291,9 @@ public:
 
   void removeMapping(const usvfs::HookContext::ConstPtr &readContext, bool directory = false)
   {
+    bool addToDelete = false;
+    bool dontAddToDelete = false;
+
     // We need to track deleted files even if they were not rerouted (i.e. files deleted from the real folder which there is
     // a virtualized mapped folder on top of it). Since we don't want to add, *every* file which is deleted we check this:
     if (!directory) {
@@ -305,7 +308,7 @@ public:
           found = true;
       }
       if (found)
-        k32DeleteTracker.insert(m_RealPath, m_FileName);
+        addToDelete = true;
     }
 
     if (wasRerouted()) {
@@ -324,6 +327,7 @@ public:
           parent = fs::path(parent).parent_path().wstring();
           if (k32FakeDirTracker.contains(parent))
           {
+            dontAddToDelete = true;
             if (RemoveDirectoryW(parent.c_str())) {
               k32FakeDirTracker.erase(parent);
               spdlog::get("usvfs")->info("removed empty fake directory: {}", string_cast<std::string>(parent));
@@ -338,6 +342,9 @@ public:
             break;
         }
       }
+    }
+    if (addToDelete && !dontAddToDelete) {
+      k32DeleteTracker.insert(m_RealPath, m_FileName);
     }
   }
 
@@ -807,20 +814,49 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
       newToken);
   POST_REALCALL
 
+  BOOL blacklisted = FALSE;
+  if (applicationReroute.fileName()) {
+    auto context = READ_CONTEXT();
+    if (context->executableBlacklisted(applicationReroute.fileName())) {
+      spdlog::get("hooks")->info(
+        "not injecting {} as application is blacklisted",
+        ush::string_cast<std::string>(
+          applicationReroute.fileName(),
+          ush::CodePage::UTF8
+          )
+      );
+      blacklisted = TRUE;
+    }
+  } else if (cmdReroute.fileName()) {
+    auto context = READ_CONTEXT();
+    if (context->executableBlacklisted(cmdReroute.fileName())) {
+      spdlog::get("hooks")->info(
+        "not injecting {} as command line is blacklisted",
+        ush::string_cast<std::string>(
+          cmdReroute.fileName(),
+          ush::CodePage::UTF8
+          )
+      );
+      blacklisted = TRUE;
+    }
+  }
+
   if (res)
   {
-    try {
-      injectProcess(dllPath, callParameters, *lpProcessInformation);
-    } catch (const std::exception &e) {
-      spdlog::get("hooks")
-          ->error("failed to inject into {0}: {1}",
-                  lpApplicationName != nullptr
-                      ? log::wrap(applicationReroute.fileName())
-                      : log::wrap(static_cast<LPCWSTR>(lpCommandLine)),
-                  e.what());
+    if (!blacklisted) {
+      try {
+        injectProcess(dllPath, callParameters, *lpProcessInformation);
+      } catch (const std::exception &e) {
+        spdlog::get("hooks")
+            ->error("failed to inject into {0}: {1}",
+                    lpApplicationName != nullptr
+                        ? log::wrap(applicationReroute.fileName())
+                        : log::wrap(static_cast<LPCWSTR>(lpCommandLine)),
+                    e.what());
+      }
     }
 
-    // resume unless process is suposed to start suspended
+    // resume unless process is supposed to start suspended
     if (!susp && (ResumeThread(lpProcessInformation->hThread) == (DWORD)-1)) {
       spdlog::get("hooks")->error("failed to inject into spawned process");
       res = FALSE;
@@ -830,9 +866,10 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
   LOG_CALL()
       .PARAM(lpApplicationName)
       .PARAM(applicationReroute.fileName())
-      .PARAM(cmdline)
+      .PARAM(cmdReroute.fileName())
       .PARAM(res)
-      .PARAM(callContext.lastError());
+      .PARAM(callContext.lastError())
+      .PARAM(cmdline);
   HOOK_END
 
   return res;
@@ -2048,7 +2085,6 @@ HANDLE WINAPI usvfs::hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVEL
 
   bool usedRewrite = false;
 
-  
   if (boost::algorithm::icontains(lpFileName, tempPathStr)) {
     PRE_REALCALL
     //Force the mutEXHook to match NtQueryDirectoryFile so it calls the non hooked NtQueryDirectoryFile.
