@@ -31,6 +31,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/tokenizer.hpp>
 #include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/dll/runtime_symbol_info.hpp>
 #include <ttrampolinepool.h>
 #include <scopeguard.h>
 #include <stringcast.h>
@@ -43,6 +44,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <codecvt>
 #include <stdio.h>
 #include <Psapi.h>
+#include <filesystem>
 
 
 namespace bfs = boost::filesystem;
@@ -347,19 +349,25 @@ void __cdecl InitHooks(LPVOID parameters, size_t)
   try {
     manager = new usvfs::HookManager(*params, dllModule);
 
-    spdlog::get("usvfs")
-      ->info("inithooks in process {0} successfull", ::GetCurrentProcessId());
+    auto context = manager->context();
+    auto exePath = boost::dll::program_location();
+    auto libraries = context->librariesToForceLoad(exePath.filename().c_str());
+    for (auto library : libraries) {
+      if (std::experimental::filesystem::exists(library)) {
+        const auto ret = LoadLibraryExW(library.c_str(), NULL, 0);
+        if (ret) {
+          spdlog::get("usvfs")
+            ->info("inithooks succeeded to force load {0}", ush::string_cast<std::string>(library).c_str());
+        } else {
+          spdlog::get("usvfs")
+            ->critical("inithooks failed to force load {0}", ush::string_cast<std::string>(library).c_str());
+        }
+      }
+    }
 
-/*
-    std::ostringstream str;
-    dumpTree(str, *manager->context()->redirectionTable().get());
-    typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
-    boost::char_separator<char> sep("\n");
-    tokenizer tok(str.str(), sep);
-    for (auto && s : tok)
-      spdlog::get("usvfs")->debug("{}", s);
-*/
-    //context = manager->context();
+    spdlog::get("usvfs")
+      ->info("inithooks in process {0} successful", ::GetCurrentProcessId());
+
   } catch (const std::exception &e) {
     spdlog::get("usvfs")->debug("failed to initialise hooks: {0}", e.what());
   }
@@ -716,9 +724,22 @@ VOID WINAPI BlacklistExecutable(LPWSTR executableName)
   context->blacklistExecutable(executableName);
 }
 
+
 VOID WINAPI ClearExecutableBlacklist()
 {
   context->clearExecutableBlacklist();
+}
+
+
+VOID WINAPI ForceLoadLibrary(LPWSTR processName, LPWSTR libraryPath)
+{
+  context->forceLoadLibrary(processName, libraryPath);
+}
+
+
+VOID WINAPI ClearLibraryForceLoads()
+{
+  context->clearLibraryForceLoads();
 }
 
 

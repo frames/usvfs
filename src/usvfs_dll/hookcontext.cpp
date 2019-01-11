@@ -225,6 +225,32 @@ BOOL HookContext::executableBlacklisted(const std::wstring &executableName) cons
   return FALSE;
 }
 
+void HookContext::forceLoadLibrary(const std::wstring &processName, const std::wstring &libraryPath)
+{
+  m_Parameters->forcedLibraries.push_front(ForcedLibrary(
+    shared::string_cast<std::string>(processName, shared::CodePage::UTF8).c_str(),
+    shared::string_cast<std::string>(libraryPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->forcedLibraries.get_allocator()));
+}
+
+void HookContext::clearLibraryForceLoads()
+{
+  m_Parameters->forcedLibraries.clear();
+}
+
+std::vector<std::wstring> HookContext::librariesToForceLoad(const std::wstring &processName)
+{
+  std::vector<std::wstring> results;
+  for (auto library : m_Parameters->forcedLibraries) {
+    std::string processNameString = shared::string_cast<std::string>(processName, shared::CodePage::UTF8);
+    if (stricmp(processNameString.c_str(), library.processName.c_str()) == 0) {
+      std::wstring libraryPathString = shared::string_cast<std::wstring>(library.libraryPath.c_str(), shared::CodePage::UTF8);
+      results.push_back(libraryPathString);
+    }
+  }
+  return results;
+}
+
 void HookContext::unregisterCurrentProcess()
 {
   auto iter = m_Parameters->processList.find(::GetCurrentProcessId());
