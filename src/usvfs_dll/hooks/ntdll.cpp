@@ -13,6 +13,7 @@
 #pragma warning(pop)
 #include <string>
 #include <deque>
+#include <queue>
 #include <vector>
 #include <set>
 #include <map>
@@ -553,7 +554,7 @@ struct Searches {
     }
     std::set<std::wstring> foundFiles;
     HANDLE currentSearchHandle;
-    std::vector<VirtualMatch> virtualMatches;
+    std::queue<VirtualMatch> virtualMatches;
     UnicodeString searchPattern;
     bool regularComplete{false};
   };
@@ -611,7 +612,7 @@ void gatherVirtualEntries(const UnicodeString &dirName,
             ush::CodePage::UTF8), vName };
         }
               
-        info.virtualMatches.push_back(m);
+        info.virtualMatches.push(m);
         info.foundFiles.insert(ush::to_upper(vName));
       }
     }
@@ -787,12 +788,12 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFile(
   if (!moreRegular) {
     // add virtual results
     while (!dataReturned && infoIter->second.virtualMatches.size() > 0) {
-      auto matchIter = infoIter->second.virtualMatches.rbegin();
-      if (matchIter->realPath.size() != 0) {
+      auto match = infoIter->second.virtualMatches.front();
+      if (match.realPath.size() != 0) {
         dataRead = Length;
         if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
-                                   infoIter->second, matchIter->realPath,
-                                   matchIter->virtualName, ReturnSingleEntry,
+                                   infoIter->second, match.realPath,
+                                   match.virtualName, ReturnSingleEntry,
                                    dataRead)) {
           // a positive result here means the call returned data and there may
           // be further objects to be retrieved by repeating the call
@@ -803,7 +804,7 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFile(
           // TODO: doesn't append search results from more than one redirection
           // per call. This is bad for performance but otherwise we'd need to
           // re-write the offsets between information objects
-          infoIter->second.virtualMatches.pop_back();
+          infoIter->second.virtualMatches.pop();
           CloseHandle(infoIter->second.currentSearchHandle);
           infoIter->second.currentSearchHandle = INVALID_HANDLE_VALUE;
         }
@@ -955,12 +956,12 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFileEx(
   if (!moreRegular) {
     // add virtual results
     while (!dataReturned && infoIter->second.virtualMatches.size() > 0) {
-      auto matchIter = infoIter->second.virtualMatches.rbegin();
-      if (matchIter->realPath.size() != 0) {
+      auto match = infoIter->second.virtualMatches.front();
+      if (match.realPath.size() != 0) {
         dataRead = Length;
         if (addVirtualSearchResult(FileInformationCurrent, FileInformationClass,
-          infoIter->second, matchIter->realPath,
-          matchIter->virtualName, QueryFlags & SL_RETURN_SINGLE_ENTRY,
+          infoIter->second, match.realPath,
+          match.virtualName, QueryFlags & SL_RETURN_SINGLE_ENTRY,
           dataRead)) {
           // a positive result here means the call returned data and there may
           // be further objects to be retrieved by repeating the call
@@ -972,7 +973,7 @@ NTSTATUS WINAPI usvfs::hook_NtQueryDirectoryFileEx(
           // TODO: doesn't append search results from more than one redirection
           // per call. This is bad for performance but otherwise we'd need to
           // re-write the offsets between information objects
-          infoIter->second.virtualMatches.pop_back();
+          infoIter->second.virtualMatches.pop();
           CloseHandle(infoIter->second.currentSearchHandle);
           infoIter->second.currentSearchHandle = INVALID_HANDLE_VALUE;
         }
