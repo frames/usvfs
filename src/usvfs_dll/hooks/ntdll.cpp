@@ -40,6 +40,7 @@ namespace bfs  = boost::filesystem;
 
 using usvfs::UnicodeString;
 
+// flag definitions below are copied from winternl.h
 #define FILE_SUPERSEDE 0x00000000
 #define FILE_OPEN 0x00000001
 #define FILE_CREATE 0x00000002
@@ -47,6 +48,8 @@ using usvfs::UnicodeString;
 #define FILE_OVERWRITE 0x00000004
 #define FILE_OVERWRITE_IF 0x00000005
 #define FILE_MAXIMUM_DISPOSITION 0x00000005
+
+#define FILE_DELETE_ON_CLOSE 0x00001000
 
 template <typename T>
 using unique_ptr_deleter = std::unique_ptr<T, void (*)(T *)>;
@@ -1042,6 +1045,10 @@ NTSTATUS ntdll_mess_NtOpenFile(PHANDLE FileHandle,
 
   HOOK_START_GROUP(MutExHookGroup::OPEN_FILE)
 
+  if (OpenOptions & FILE_DELETE_ON_CLOSE) {
+    spdlog::get("hooks")->warn("ntdll_mess_NtOpenFile: FILE_DELETE_ON_CLOSE not supported");
+  }
+
   bool storePath = false;
   if (((OpenOptions & FILE_DIRECTORY_FILE) != 0UL)
       && ((OpenOptions & FILE_OPEN_FOR_BACKUP_INTENT) != 0UL)) {
@@ -1149,6 +1156,10 @@ NTSTATUS ntdll_mess_NtCreateFile(
                           IoStatusBlock, AllocationSize, FileAttributes,
                           ShareAccess, CreateDisposition, CreateOptions,
                           EaBuffer, EaLength);
+  }
+
+  if (CreateOptions & FILE_DELETE_ON_CLOSE) {
+    spdlog::get("hooks")->warn("ntdll_mess_NtCreateFile: FILE_DELETE_ON_CLOSE not supported");
   }
 
   UnicodeString inPath = CreateUnicodeString(ObjectAttributes);

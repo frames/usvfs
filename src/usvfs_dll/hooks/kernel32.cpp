@@ -1044,6 +1044,10 @@ HANDLE WINAPI usvfs::hook_CreateFileW(
     return res;
   }
 
+  if (dwFlagsAndAttributes & FILE_FLAG_DELETE_ON_CLOSE) {
+    spdlog::get("hooks")->warn("hook_CreateFileW: FILE_FLAG_DELETE_ON_CLOSE not supported");
+  }
+
   DWORD originalDisposition = dwCreationDisposition;
   CreateRerouter rerouter;
   if (rerouter.rerouteCreate(READ_CONTEXT(), callContext, lpFileName, dwCreationDisposition, dwDesiredAccess, lpSecurityAttributes))
@@ -1108,6 +1112,10 @@ HANDLE WINAPI usvfs::hook_CreateFile2(LPCWSTR lpFileName, DWORD dwDesiredAccess,
     HANDLE res = CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, pCreateExParams);
     callContext.updateLastError();
     return res;
+  }
+
+  if (pCreateExParams && (pCreateExParams->dwFileFlags & FILE_FLAG_DELETE_ON_CLOSE)) {
+    spdlog::get("hooks")->warn("hook_CreateFile2: FILE_FLAG_DELETE_ON_CLOSE not supported");
   }
 
   DWORD originalDisposition = dwCreationDisposition;
