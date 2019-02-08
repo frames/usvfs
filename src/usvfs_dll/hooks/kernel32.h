@@ -46,6 +46,14 @@ DLLEXPORT HMODULE WINAPI hook_LoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, D
 extern BOOL (WINAPI *CreateProcessInternalW)(LPVOID token, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, LPVOID newToken);
 DLLEXPORT BOOL WINAPI hook_CreateProcessInternalW(LPVOID token, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation, LPVOID newToken);
 
+extern HANDLE (WINAPI *CreateRemoteThread)(IN HANDLE hProcess,IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
+                                           IN DWORD dwStackSize,IN LPTHREAD_START_ROUTINE lpStartAddress,
+                                           IN LPVOID lpParameter,IN DWORD dwCreationFlags,OUT LPDWORD lpThreadId);
+DLLEXPORT HANDLE WINAPI hook_CreateRemoteThread(IN HANDLE hProcess, IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
+                                                IN DWORD dwStackSize, IN LPTHREAD_START_ROUTINE lpStartAddress,
+                                                IN LPVOID lpParameter, IN DWORD dwCreationFlags,
+                                                OUT LPDWORD lpThreadId);
+
 DLLEXPORT DWORD WINAPI hook_GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 
 DLLEXPORT HANDLE WINAPI hook_FindFirstFileExW(LPCWSTR lpFileName, FINDEX_INFO_LEVELS fInfoLevelId, LPVOID lpFindFileData, FINDEX_SEARCH_OPS  fSearchOp, LPVOID lpSearchFilter, DWORD dwAdditionalFlags);
