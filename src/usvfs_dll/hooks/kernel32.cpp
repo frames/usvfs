@@ -2026,7 +2026,7 @@ HANDLE (WINAPI *usvfs::CreateRemoteThread)(IN HANDLE hProcess, IN LPSECURITY_ATT
                                            IN DWORD dwStackSize, IN LPTHREAD_START_ROUTINE lpStartAddress,
                                            IN LPVOID lpParameter, IN DWORD dwCreationFlags, OUT LPDWORD lpThreadId);
 
-HANDLE usvfs::hook_CreateRemoteThread(IN HANDLE hProcess, IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
+HANDLE WINAPI usvfs::hook_CreateRemoteThread(IN HANDLE hProcess, IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
                                       IN DWORD dwStackSize, IN LPTHREAD_START_ROUTINE lpStartAddress,
                                       IN LPVOID lpParameter, IN DWORD dwCreationFlags,
                                       OUT LPDWORD lpThreadId)
