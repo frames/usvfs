@@ -815,30 +815,12 @@ BOOL WINAPI usvfs::hook_CreateProcessInternalW(
   POST_REALCALL
 
   BOOL blacklisted = FALSE;
-  if (applicationReroute.fileName()) {
+  { // limit scope of context
     auto context = READ_CONTEXT();
-    if (context->executableBlacklisted(applicationReroute.fileName())) {
-      spdlog::get("hooks")->info(
-        "not injecting {} as application is blacklisted",
-        ush::string_cast<std::string>(
-          applicationReroute.fileName(),
-          ush::CodePage::UTF8
-          )
-      );
-      blacklisted = TRUE;
-    }
-  } else if (cmdReroute.fileName()) {
-    auto context = READ_CONTEXT();
-    if (context->executableBlacklisted(cmdReroute.fileName())) {
-      spdlog::get("hooks")->info(
-        "not injecting {} as command line is blacklisted",
-        ush::string_cast<std::string>(
-          cmdReroute.fileName(),
-          ush::CodePage::UTF8
-          )
-      );
-      blacklisted = TRUE;
-    }
+    blacklisted = context->executableBlacklisted(
+      applicationReroute.fileName(),
+      cmdReroute.fileName()
+    );
   }
 
   if (res)

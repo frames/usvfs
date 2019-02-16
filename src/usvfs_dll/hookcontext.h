@@ -217,7 +217,7 @@ public:
 
   void blacklistExecutable(const std::wstring &executableName);
   void clearExecutableBlacklist();
-  BOOL executableBlacklisted(const std::wstring &executableName) const;
+  BOOL HookContext::executableBlacklisted(LPCWSTR lpApplicationName, LPCWSTR lpCommandLine) const;
 
   void forceLoadLibrary(const std::wstring &processName, const std::wstring &libraryPath);
   void clearLibraryForceLoads();

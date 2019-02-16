@@ -33,6 +33,7 @@ using usvfs::shared::SharedMemoryT;
 using usvfs::shared::VoidAllocatorT;
 
 using namespace usvfs;
+namespace ush = usvfs::shared;
 
 HookContext *HookContext::s_Instance = nullptr;
 
@@ -214,15 +215,33 @@ void HookContext::clearExecutableBlacklist()
   m_Parameters->processBlacklist.clear();
 }
 
-BOOL HookContext::executableBlacklisted(const std::wstring &executableName) const
+BOOL HookContext::executableBlacklisted(LPCWSTR lpApplicationName, LPCWSTR lpCommandLine) const
 {
-  for (shared::StringT exec : m_Parameters->processBlacklist) {
-    if (boost::algorithm::iends_with(executableName,
-            "\\" + std::string(exec.data(), exec.size()))) {
-      return TRUE;
+  BOOL blacklisted = FALSE;
+
+  if (lpApplicationName) {
+    std::string appName = ush::string_cast<std::string>(lpApplicationName, ush::CodePage::UTF8);
+    for (shared::StringT item : m_Parameters->processBlacklist) {
+      if (boost::algorithm::iends_with(appName, std::string(item.data(), item.size()))) {
+        spdlog::get("usvfs")->info("application {} is blacklisted", appName);
+        blacklisted = TRUE;
+        break;
+      }
     }
   }
-  return FALSE;
+
+  if (lpCommandLine) {
+    std::string cmdLine = ush::string_cast<std::string>(lpCommandLine, ush::CodePage::UTF8);
+    for (shared::StringT item : m_Parameters->processBlacklist) {
+      if (boost::algorithm::icontains(cmdLine, std::string(item.data(), item.size()))) {
+        spdlog::get("usvfs")->info("command line {} is blacklisted", cmdLine);
+        blacklisted = TRUE;
+        break;
+      }
+    }
+  }
+
+  return blacklisted;
 }
 
 void HookContext::forceLoadLibrary(const std::wstring &processName, const std::wstring &libraryPath)

@@ -673,6 +673,8 @@ BOOL WINAPI CreateProcessHooked(LPCWSTR lpApplicationName
   BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
   DWORD flags = dwCreationFlags | CREATE_SUSPENDED;
 
+  BOOL blacklisted = context->executableBlacklisted(lpApplicationName, lpCommandLine);
+
   BOOL res = CreateProcessW(lpApplicationName, lpCommandLine
                             , lpProcessAttributes, lpThreadAttributes
                             , bInheritHandles, flags
@@ -683,17 +685,19 @@ BOOL WINAPI CreateProcessHooked(LPCWSTR lpApplicationName
     return FALSE;
   }
 
-  std::wstring applicationDirPath = winapi::wide::getModuleFileName(dllModule);
-  boost::filesystem::path p(applicationDirPath);
-  try {
-    usvfs::injectProcess(p.parent_path().wstring(), context->callParameters(),
-                         *lpProcessInformation);
-  } catch (const std::exception &e) {
-    spdlog::get("usvfs")->error("failed to inject: {}", e.what());
-    logExtInfo(e, LogLevel::Error);
-    ::TerminateProcess(lpProcessInformation->hProcess, 1);
-    ::SetLastError(ERROR_INVALID_PARAMETER);
-    return FALSE;
+  if (!blacklisted) {
+    std::wstring applicationDirPath = winapi::wide::getModuleFileName(dllModule);
+    boost::filesystem::path p(applicationDirPath);
+    try {
+      usvfs::injectProcess(p.parent_path().wstring(), context->callParameters(),
+                           *lpProcessInformation);
+    } catch (const std::exception &e) {
+      spdlog::get("usvfs")->error("failed to inject: {}", e.what());
+      logExtInfo(e, LogLevel::Error);
+      ::TerminateProcess(lpProcessInformation->hProcess, 1);
+      ::SetLastError(ERROR_INVALID_PARAMETER);
+      return FALSE;
+    }
   }
 
   if (!susp) {
