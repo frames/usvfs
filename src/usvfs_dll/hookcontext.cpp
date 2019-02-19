@@ -270,6 +270,114 @@ std::vector<std::wstring> HookContext::librariesToForceLoad(const std::wstring &
   return results;
 }
 
+void HookContext::addDeletedFile(const std::wstring &fromPath, const std::wstring &toPath)
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->deletedFileTracker.get_allocator()
+    );
+  shared::StringT s_toPath(
+    shared::string_cast<std::string>(toPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->deletedFileTracker.get_allocator()
+    );
+  
+  m_Parameters->deletedFileTracker.emplace(std::make_pair(s_fromPath, s_toPath));
+}
+
+bool HookContext::existsDeletedFile(const std::wstring &fromPath) const
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->deletedFileTracker.get_allocator()
+  );
+
+  auto find = m_Parameters->deletedFileTracker.find(s_fromPath);
+  if (find != m_Parameters->deletedFileTracker.end())
+    return true;
+
+  return false;
+}
+
+bool HookContext::forgetDeletedFile(const std::wstring &fromPath)
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->deletedFileTracker.get_allocator()
+    );
+  
+  return m_Parameters->deletedFileTracker.erase(s_fromPath);
+}
+
+std::wstring HookContext::lookupDeletedFile(const std::wstring &fromPath) const
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->deletedFileTracker.get_allocator()
+    );
+
+  std::wstring result;
+  
+  auto find = m_Parameters->deletedFileTracker.find(s_fromPath);
+  if (find != m_Parameters->deletedFileTracker.end())
+    result = shared::string_cast<std::wstring>(find->second.c_str());
+
+  return result;
+}
+
+void HookContext::addFakeDirectory(const std::wstring &fromPath, const std::wstring &toPath)
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->fakeDirectoryTracker.get_allocator()
+  );
+  shared::StringT s_toPath(
+    shared::string_cast<std::string>(toPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->fakeDirectoryTracker.get_allocator()
+  );
+
+  m_Parameters->fakeDirectoryTracker.emplace(std::make_pair(s_fromPath, s_toPath));
+}
+
+bool HookContext::existsFakeDirectory(const std::wstring &fromPath) const
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->fakeDirectoryTracker.get_allocator()
+  );
+
+  auto find = m_Parameters->fakeDirectoryTracker.find(s_fromPath);
+  if (find != m_Parameters->fakeDirectoryTracker.end())
+    return true;
+
+  return false;
+}
+
+bool HookContext::forgetFakeDirectory(const std::wstring &fromPath)
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->fakeDirectoryTracker.get_allocator()
+  );
+
+  return m_Parameters->fakeDirectoryTracker.erase(s_fromPath);
+}
+
+std::wstring HookContext::lookupFakeDirectory(const std::wstring &fromPath) const
+{
+  shared::StringT s_fromPath(
+    shared::string_cast<std::string>(fromPath, shared::CodePage::UTF8).c_str(),
+    m_Parameters->fakeDirectoryTracker.get_allocator()
+  );
+
+  std::wstring result;
+
+  auto find = m_Parameters->fakeDirectoryTracker.find(s_fromPath);
+  if (find != m_Parameters->fakeDirectoryTracker.end())
+    result = shared::string_cast<std::wstring>(find->second.c_str());
+
+  return result;
+}
+
 void HookContext::unregisterCurrentProcess()
 {
   auto iter = m_Parameters->processList.find(::GetCurrentProcessId());

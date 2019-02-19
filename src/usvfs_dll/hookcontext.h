@@ -32,6 +32,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/shared_lock_guard.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/flat_map.hpp>
 #include <boost/interprocess/containers/flat_set.hpp>
 #include <boost/interprocess/containers/slist.hpp>
 #include <memory>
@@ -54,6 +55,7 @@ void USVFSInitParametersInt(USVFSParameters *parameters,
 
 typedef shared::VoidAllocatorT::rebind<DWORD>::other DWORDAllocatorT;
 typedef shared::VoidAllocatorT::rebind<shared::StringT>::other StringAllocatorT;
+typedef shared::VoidAllocatorT::rebind<std::pair<shared::StringT, shared::StringT>>::other StringPairAllocatorT;
 
 struct ForcedLibrary {
   ForcedLibrary(const char *processName, const char *libraryPath,
@@ -90,6 +92,8 @@ struct SharedParameters {
     , processBlacklist(allocator)
     , processList(allocator)
     , forcedLibraries(allocator)
+    , deletedFileTracker(allocator)
+    , fakeDirectoryTracker(allocator)
   {
   }
 
@@ -107,6 +111,10 @@ struct SharedParameters {
                              StringAllocatorT> processBlacklist;
   boost::container::flat_set<DWORD, std::less<DWORD>, DWORDAllocatorT> processList;
   boost::container::slist<ForcedLibrary, ForcedLibraryAllocatorT> forcedLibraries;
+  boost::container::flat_map<shared::StringT, shared::StringT, 
+                             std::less<shared::StringT>, StringPairAllocatorT> deletedFileTracker;
+  boost::container::flat_map<shared::StringT, shared::StringT,
+                             std::less<shared::StringT>, StringPairAllocatorT> fakeDirectoryTracker;
 };
 
 
@@ -222,6 +230,16 @@ public:
   void forceLoadLibrary(const std::wstring &processName, const std::wstring &libraryPath);
   void clearLibraryForceLoads();
   std::vector<std::wstring> librariesToForceLoad(const std::wstring &processName);
+
+  void addDeletedFile(const std::wstring &fromPath, const std::wstring &toPath);
+  bool existsDeletedFile(const std::wstring &fromPath) const;
+  bool forgetDeletedFile(const std::wstring &fromPath);
+  std::wstring lookupDeletedFile(const std::wstring &fromPath) const;
+
+  void addFakeDirectory(const std::wstring &fromPath, const std::wstring &toPath);
+  bool existsFakeDirectory(const std::wstring &fromPath) const;
+  bool forgetFakeDirectory(const std::wstring &fromPath);
+  std::wstring lookupFakeDirectory(const std::wstring &fromPath) const;
 
   void setLogLevel(LogLevel level);
   void setCrashDumpsType(CrashDumpsType type);
