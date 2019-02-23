@@ -250,6 +250,8 @@ void HookManager::initHooks()
 
   installHook(kbaseMod, k32Mod, "CreateProcessInternalW", hook_CreateProcessInternalW, reinterpret_cast<LPVOID*>(&CreateProcessInternalW));
 
+  installHook(kbaseMod, k32Mod, "CreateRemoteThread", hook_CreateRemoteThread, reinterpret_cast<LPVOID*>(&CreateRemoteThread));
+
   installHook(kbaseMod, k32Mod, "MoveFileA", hook_MoveFileA);
   installHook(kbaseMod, k32Mod, "MoveFileW", hook_MoveFileW);
   installHook(kbaseMod, k32Mod, "MoveFileExA", hook_MoveFileExA);

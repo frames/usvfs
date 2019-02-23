@@ -16,6 +16,7 @@
 #include <shlwapi.h>
 #include <mutex>
 #include <shared_mutex>
+#include <Psapi.h>
 
 #if 1
 #include <boost/filesystem.hpp>
@@ -1957,6 +1958,124 @@ DWORD WINAPI usvfs::hook_GetFullPathNameW(LPCWSTR lpFileName,
   return res;
 }
 
+/*
+ ****************************************************************************************************************
+ ****************************************************************************************************************
+ ****************************************************************************************************************
+ */
+
+HANDLE (WINAPI *usvfs::CreateRemoteThread)(IN HANDLE hProcess, IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
+                                           IN DWORD dwStackSize, IN LPTHREAD_START_ROUTINE lpStartAddress,
+                                           IN LPVOID lpParameter, IN DWORD dwCreationFlags, OUT LPDWORD lpThreadId);
+
+HANDLE WINAPI usvfs::hook_CreateRemoteThread(IN HANDLE hProcess, IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
+                                      IN DWORD dwStackSize, IN LPTHREAD_START_ROUTINE lpStartAddress,
+                                      IN LPVOID lpParameter, IN DWORD dwCreationFlags,
+                                      OUT LPDWORD lpThreadId)
+{
+	auto res = INVALID_HANDLE_VALUE;
+
+	HOOK_START_GROUP(MutExHookGroup::CREATE_PROCESS)
+		if (!callContext.active())
+		{
+			res = CreateRemoteThread(hProcess, lpThreadAttributes, dwStackSize,
+			                         lpStartAddress, lpParameter, dwCreationFlags, lpThreadId);
+			callContext.updateLastError();
+			return res;
+		}
+
+		TCHAR lpApplicationName[MAX_PATH];
+		const auto lenght = K32GetProcessImageFileNameW(hProcess, lpApplicationName, MAX_PATH);
+		if (lenght == 0)
+		{
+			return res;
+		}
+
+		PROCESS_INFORMATION lpProcessInformation;
+		lpProcessInformation.hProcess = hProcess;
+		lpProcessInformation.dwProcessId = GetProcessId(hProcess);
+
+
+		// remember if the caller wanted the process to be suspended. If so, we
+		// don't resume when we're done
+		BOOL susp = dwCreationFlags & CREATE_SUSPENDED;
+		dwCreationFlags |= CREATE_SUSPENDED;
+
+		RerouteW applicationReroute;
+		LPWSTR cend = nullptr;
+
+		std::wstring dllPath;
+		USVFSParameters callParameters;
+
+		{
+			// scope for context lock
+			const auto context = READ_CONTEXT();
+
+			applicationReroute
+				= RerouteW::create(context, callContext, lpApplicationName);
+
+			dllPath = context->dllPath();
+			callParameters = context->callParameters();
+		}
+
+		PRE_REALCALL
+		res = CreateRemoteThread(hProcess, lpThreadAttributes, dwStackSize,
+		                         lpStartAddress, lpParameter, dwCreationFlags, lpThreadId);
+		POST_REALCALL
+
+		auto blacklisted = false;
+		if (applicationReroute.fileName())
+		{
+			const auto context = READ_CONTEXT();
+			if (context->executableBlacklisted(applicationReroute.fileName()))
+			{
+				spdlog::get("hooks")->info(
+					"not injecting {} as application is blacklisted",
+					ush::string_cast<std::string>(
+						applicationReroute.fileName(),
+						CodePage::UTF8
+					)
+				);
+				blacklisted = true;
+			}
+		}
+
+		if (res != INVALID_HANDLE_VALUE)
+		{
+			if (!blacklisted)
+			{
+				lpProcessInformation.hThread = res;
+				lpProcessInformation.dwThreadId = GetThreadId(res);
+				try
+				{
+					injectProcess(dllPath, callParameters, lpProcessInformation);
+				}
+				catch (const std::exception& e)
+				{
+					spdlog::get("hooks")
+						->error("failed to inject into {0}: {1}",
+						        log::wrap(static_cast<LPCWSTR>(lpApplicationName)),
+						        e.what());
+				}
+			}
+
+			// resume unless process is supposed to start suspended
+			if (!susp && ResumeThread(res) == static_cast<DWORD>(-1))
+			{
+				spdlog::get("hooks")->error("failed to inject into spawned process");
+				res = INVALID_HANDLE_VALUE;
+			}
+		}
+
+		LOG_CALL()
+			.PARAM(lpApplicationName)
+			.PARAM(applicationReroute.fileName())
+			.PARAM(res)
+			.PARAM(callContext.lastError());
+	HOOK_END
+
+	return res;
+}
 
 DWORD WINAPI usvfs::hook_GetModuleFileNameW(HMODULE hModule,
                                               LPWSTR lpFilename, DWORD nSize)
