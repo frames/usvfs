@@ -27,6 +27,7 @@ along with usvfs. If not, see <http://www.gnu.org/licenses/>.
 #include <shared_memory.h>
 #include "loghelpers.h"
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/interprocess/containers/pair.hpp>
 
 namespace bi = boost::interprocess;
 using usvfs::shared::SharedMemoryT;
@@ -281,7 +282,9 @@ void HookContext::addDeletedFile(const std::wstring &fromPath, const std::wstrin
     m_Parameters->deletedFileTracker.get_allocator()
     );
   
-  m_Parameters->deletedFileTracker.emplace(std::make_pair(s_fromPath, s_toPath));
+  m_Parameters->deletedFileTracker.emplace(
+    bi::pair<shared::StringT, shared::StringT>(s_fromPath, s_toPath)
+  );
 }
 
 bool HookContext::existsDeletedFile(const std::wstring &fromPath) const
@@ -335,7 +338,9 @@ void HookContext::addFakeDirectory(const std::wstring &fromPath, const std::wstr
     m_Parameters->fakeDirectoryTracker.get_allocator()
   );
 
-  m_Parameters->fakeDirectoryTracker.emplace(std::make_pair(s_fromPath, s_toPath));
+  m_Parameters->fakeDirectoryTracker.emplace(
+    bi::pair<shared::StringT, shared::StringT>(s_fromPath, s_toPath)
+  );
 }
 
 bool HookContext::existsFakeDirectory(const std::wstring &fromPath) const
